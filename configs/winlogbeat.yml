@@ -1,0 +1,25 @@
+
+winlogbeat.event_logs:
+  - name: Application
+    ignore_older: 72h
+  - name: Security
+  - name: System
+
+setup.template.settings:
+  index.number_of_shards: 3
+
+tags: ["service-X", "web-tier"]
+
+fields:
+  env: dev
+  project: tlo
+  role: api
+
+fields_under_root: true
+
+setup.kibana:
+  host: "http://192.168.200.112:80"
+
+output.logstash:
+  hosts: ["192.168.200.112:5044"]
+

@@ -1,0 +1,30 @@
+version: '2'
+services:
+  logstash:
+    image: docker.elastic.co/logstash/logstash:6.0.1
+    environment:
+      LOGSTASH_FIELDS: logfilter=logstash
+      LOGSTASH_TAGS: logstash
+      TZ: America/Chicago
+      XPACK_MONITORING_ELASTICSEARCH_URL: http://elasticsearch:9200
+      http.host: 0.0.0.0
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /mnt/docker/config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    links:
+    - elasticsearch:elasticsearch
+    ports:
+    - 5040:5040/tcp
+    - 5040:5040/udp
+    - 5041:5041/tcp
+    - 5041:5041/udp
+    - 5044:5044/tcp
+    - 9600:9600/tcp
+    labels:
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.global: 'true'
+  elasticsearch:
+    image: rancher/dns-service
+    external_links:
+    - elasticsearch/cluster:cluster

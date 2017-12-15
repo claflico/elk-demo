@@ -1,0 +1,16 @@
+version: '2'
+services:
+  logstash:
+    start_on_create: true
+  elasticsearch:
+    start_on_create: true
+  packetbeat-template:
+    scale: 1
+    start_on_create: true
+  packetbeat-dashboard:
+    scale: 1
+    start_on_create: true
+  kibana:
+    start_on_create: true
+  packetbeat:
+    start_on_create: true

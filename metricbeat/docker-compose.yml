@@ -1,0 +1,66 @@
+version: '2'
+services:
+  logstash:
+    image: rancher/dns-service
+    external_links:
+    - logstash/logstash:logstash
+  elasticsearch:
+    image: rancher/dns-service
+    external_links:
+    - elasticsearch/cluster:cluster
+  metricbeat-dashboard:
+    image: docker.elastic.co/beats/metricbeat:6.0.1
+    environment:
+      output.elasticsearch.hosts: '["elasticsearch:9200"]'
+      output.logstash.enabled: 'false'
+      setup.kibana.host: kibana:5601
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /mnt/docker/config/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+    command:
+    - setup
+    - --dashboards
+    labels:
+      io.rancher.sidekicks: metricbeat-template
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:6.0.1
+    environment:
+      LOGSTASH_FIELDS: logfilter=metricbeat
+      LOGSTASH_TAGS: metricbeat
+      output.logstash.hosts: '["logstash:5044"]'
+    network_mode: host
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /proc:/hostfs/proc:ro
+    - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+    - /:/hostfs:ro
+    command:
+    - metricbeat
+    - -e
+    - --system.hostfs=/hostfs
+    labels:
+      io.rancher.container.dns: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.global: 'true'
+  metricbeat-template:
+    image: docker.elastic.co/beats/metricbeat:6.0.1
+    environment:
+      output.elasticsearch.hosts: '["elasticsearch:9200"]'
+      output.logstash.enabled: 'false'
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    command:
+    - setup
+    - --template
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+  kibana:
+    image: rancher/dns-service
+    external_links:
+    - kibana/kibana:kibana

@@ -1,0 +1,27 @@
+version: '2'
+services:
+  elasticsearch:
+    image: rancher/dns-service
+    external_links:
+    - elasticsearch/cluster:cluster
+  http-lb:
+    image: rancher/lb-service-haproxy:v0.7.15
+    ports:
+    - 80:80/tcp
+    labels:
+      io.rancher.container.agent.role: environmentAdmin,agent
+      io.rancher.container.agent_service.drain_provider: 'true'
+      io.rancher.container.create_agent: 'true'
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.0.1
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      server.host: '0'
+      server.name: $${HOSTNAME}
+      xpack.monitoring.ui.container.elasticsearch.enabled: 'true'
+      xpack.security.enabled: 'false'
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.container.hostname_override: container_name

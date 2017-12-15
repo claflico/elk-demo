@@ -1,0 +1,60 @@
+version: '2'
+services:
+  logstash:
+    image: rancher/dns-service
+    external_links:
+    - logstash/logstash:logstash
+  elasticsearch:
+    image: rancher/dns-service
+    external_links:
+    - elasticsearch/cluster:cluster
+  auditbeat:
+    cap_add:
+    - AUDIT_CONTROL
+    image: docker.elastic.co/beats/auditbeat:6.0.1
+    environment:
+      LOGSTASH_FIELDS: logfilter=auditbeat
+      LOGSTASH_TAGS: auditbeat
+      output.logstash.hosts: '["logstash:5044"]'
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    pid: host
+    labels:
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.global: 'true'
+  auditbeat-template:
+    image: docker.elastic.co/beats/auditbeat:6.0.1
+    environment:
+      output.elasticsearch.hosts: '["elasticsearch:9200"]'
+      output.logstash.enabled: 'false'
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    command:
+    - setup
+    - --template
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+  auditbeat-dashboard:
+    image: docker.elastic.co/beats/auditbeat:6.0.1
+    environment:
+      output.elasticsearch.hosts: '["elasticsearch:9200"]'
+      output.logstash.enabled: 'false'
+      setup.kibana.host: kibana:5601
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /mnt/docker/config/auditbeat.yml:/usr/share/auditbeat/auditbeat.yml:ro
+    command:
+    - setup
+    - --dashboards
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.sidekicks: auditbeat-template
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+  kibana:
+    image: rancher/dns-service
+    external_links:
+    - kibana/kibana:kibana

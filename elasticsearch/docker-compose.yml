@@ -1,0 +1,209 @@
+version: '2'
+volumes:
+  elasticsearch-data:
+    driver: local
+    per_container: true
+services:
+  cluster:
+    image: rancher/dns-service
+    links:
+    - elasticsearch1:elasticsearch1
+    - elasticsearch3:elasticsearch3
+    - elasticsearch2:elasticsearch2
+  elasticsearch3:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.0.1
+    hostname: elasticsearch3
+    environment:
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      bootstrap.memory_lock: 'true'
+      cluster.name: elasticsearch-cluster
+      discovery.zen.minimum_master_nodes: '2'
+      discovery.zen.ping.unicast.hosts: elasticsearch1,elasticsearch2
+      http.host: 0.0.0.0
+      network.bind_host: 0.0.0.0
+      network.host: 0.0.0.0
+      network.publish_host: 0.0.0.0
+      node.name: $${HOSTNAME}
+      thread_pool.search.queue_size: '10000'
+      xpack.security.enabled: 'false'
+    ulimits:
+      memlock:
+        hard: -1
+        soft: -1
+      nofile:
+        hard: 65536
+        soft: 65536
+    links:
+    - elasticsearch2:elasticsearch2
+    - elasticsearch1:elasticsearch1
+    volumes_from:
+    - elasticsearch-data3
+    labels:
+      io.rancher.sidekicks: elasticsearch-data3,elasticsearch-sysctl3
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/elasticsearch1,io.rancher.stack_service.name=$${stack_name}/elasticsearch2
+  elasticsearch1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.0.1
+    hostname: elasticsearch1
+    environment:
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      bootstrap.memory_lock: 'true'
+      cluster.name: elasticsearch-cluster
+      discovery.zen.minimum_master_nodes: '2'
+      discovery.zen.ping.unicast.hosts: elasticsearch2,elasticsearch3
+      http.host: 0.0.0.0
+      network.bind_host: 0.0.0.0
+      network.host: 0.0.0.0
+      network.publish_host: 0.0.0.0
+      node.name: $${HOSTNAME}
+      thread_pool.search.queue_size: '10000'
+      xpack.security.enabled: 'false'
+    ulimits:
+      memlock:
+        hard: -1
+        soft: -1
+      nofile:
+        hard: 65536
+        soft: 65536
+    links:
+    - elasticsearch2:elasticsearch2
+    - elasticsearch3:elasticsearch3
+    volumes_from:
+    - elasticsearch-data1
+    labels:
+      io.rancher.sidekicks: elasticsearch-data1,elasticsearch-sysctl1
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/elasticsearch2,io.rancher.stack_service.name=$${stack_name}/elasticsearch3
+  elasticsearch-data1:
+    image: rawmind/alpine-volume:0.0.2-2
+    environment:
+      SERVICE_GID: '1000'
+      SERVICE_UID: '1000'
+      SERVICE_VOLUME: /usr/share/elasticsearch/data
+    network_mode: none
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - elasticsearch-data:/usr/share/elasticsearch/data
+    links:
+    - elasticsearch1:elasticsearch1
+    - elasticsearch3:elasticsearch3
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
+  lb:
+    image: rancher/lb-service-haproxy:v0.7.15
+    ports:
+    - 9200:9200/tcp
+    labels:
+      io.rancher.container.agent.role: environmentAdmin,agent
+      io.rancher.container.agent_service.drain_provider: 'true'
+      io.rancher.container.create_agent: 'true'
+  elasticsearch2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.0.1
+    hostname: elasticsearch2
+    environment:
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      bootstrap.memory_lock: 'true'
+      cluster.name: elasticsearch-cluster
+      discovery.zen.minimum_master_nodes: '2'
+      discovery.zen.ping.unicast.hosts: elasticsearch1,elasticsearch3
+      http.host: 0.0.0.0
+      network.bind_host: 0.0.0.0
+      network.host: 0.0.0.0
+      network.publish_host: 0.0.0.0
+      node.name: $${HOSTNAME}
+      thread_pool.search.queue_size: '10000'
+      xpack.security.enabled: 'false'
+    ulimits:
+      memlock:
+        hard: -1
+        soft: -1
+      nofile:
+        hard: 65536
+        soft: 65536
+    links:
+    - elasticsearch1:elasticsearch1
+    - elasticsearch3:elasticsearch3
+    volumes_from:
+    - elasticsearch-data2
+    labels:
+      io.rancher.sidekicks: elasticsearch-data2,elasticsearch-sysctl2
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/elasticsearch1,io.rancher.stack_service.name=$${stack_name}/elasticsearch3
+  elasticsearch-data3:
+    image: rawmind/alpine-volume:0.0.2-2
+    environment:
+      SERVICE_GID: '1000'
+      SERVICE_UID: '1000'
+      SERVICE_VOLUME: /usr/share/elasticsearch/data
+    network_mode: none
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - elasticsearch-data:/usr/share/elasticsearch/data
+    links:
+    - elasticsearch2:elasticsearch2
+    - elasticsearch1:elasticsearch1
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
+  elasticsearch-sysctl1:
+    privileged: true
+    image: rawmind/alpine-sysctl:0.1-1
+    environment:
+      SYSCTL_KEY: vm.max_map_count
+      SYSCTL_VALUE: '262144'
+    network_mode: none
+    links:
+    - elasticsearch1:elasticsearch1
+    - elasticsearch3:elasticsearch3
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
+  elasticsearch-data2:
+    image: rawmind/alpine-volume:0.0.2-2
+    environment:
+      SERVICE_GID: '1000'
+      SERVICE_UID: '1000'
+      SERVICE_VOLUME: /usr/share/elasticsearch/data
+    network_mode: none
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - elasticsearch-data:/usr/share/elasticsearch/data
+    links:
+    - elasticsearch1:elasticsearch1
+    - elasticsearch3:elasticsearch3
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
+  elasticsearch-sysctl3:
+    privileged: true
+    image: rawmind/alpine-sysctl:0.1-1
+    environment:
+      SYSCTL_KEY: vm.max_map_count
+      SYSCTL_VALUE: '262144'
+    network_mode: none
+    links:
+    - elasticsearch2:elasticsearch2
+    - elasticsearch1:elasticsearch1
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
+  elasticsearch-sysctl2:
+    privileged: true
+    image: rawmind/alpine-sysctl:0.1-1
+    environment:
+      SYSCTL_KEY: vm.max_map_count
+      SYSCTL_VALUE: '262144'
+    network_mode: none
+    links:
+    - elasticsearch1:elasticsearch1
+    - elasticsearch3:elasticsearch3
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}

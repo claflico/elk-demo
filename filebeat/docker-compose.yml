@@ -1,0 +1,61 @@
+version: '2'
+services:
+  logstash:
+    image: rancher/dns-service
+    external_links:
+    - logstash/logstash:logstash
+  elasticsearch:
+    image: rancher/dns-service
+    external_links:
+    - elasticsearch/cluster:cluster
+  filebeat-template:
+    image: docker.elastic.co/beats/filebeat:6.0.1
+    environment:
+      output.elasticsearch.hosts: '["elasticsearch:9200"]'
+      output.logstash.enabled: 'false'
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    command:
+    - setup
+    - --template
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+  filebeat-dashboard:
+    image: docker.elastic.co/beats/filebeat:6.0.1
+    environment:
+      output.elasticsearch.hosts: '["elasticsearch:9200"]'
+      output.logstash.enabled: 'false'
+      setup.kibana.host: kibana:5601
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /mnt/docker/config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+    command:
+    - setup
+    - --dashboards
+    labels:
+      io.rancher.sidekicks: filebeat-template
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+  kibana:
+    image: rancher/dns-service
+    external_links:
+    - kibana/kibana:kibana
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:6.0.1
+    user: root
+    environment:
+      output.logstash.hosts: '["logstash:5044"]'
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /var/log:/mnt/log:ro
+    command:
+    - -e
+    - --modules
+    - system
+    labels:
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.global: 'true'
